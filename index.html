@@ -4,11 +4,31 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TradeLog Pro — Dhan Journal</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<!-- Preconnect for faster font load -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Chart.js deferred — doesn't block render -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<!-- Firebase loaded dynamically after login so it never blocks startup -->
+<script>
+function loadFirebase(cb){
+  if(window._fbLoaded){cb&&cb();return;}
+  const s1=document.createElement('script');
+  s1.src='https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
+  s1.onload=()=>{
+    const s2=document.createElement('script');
+    s2.src='https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js';
+    s2.onload=()=>{window._fbLoaded=true;cb&&cb();};
+    document.head.appendChild(s2);
+  };
+  document.head.appendChild(s1);
+}
+</script>
+<!-- Fonts loaded non-blocking -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"></noscript>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
+/* System font fallback until web font loads — no layout shift */
 :root {
   /* Dhan-style Carbon Black — true near-black base, cool dark surfaces */
   --bg:#0a0c0f;--bg2:#0f1117;--bg3:#161a22;--bg4:#1c212c;
@@ -25,15 +45,32 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px
 ::-webkit-scrollbar-track{background:var(--bg2)}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 
-/* HEADER */
-.header{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:54px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:300}
-.logo{font-size:15px;font-weight:700;color:var(--t1);letter-spacing:-0.2px;display:flex;align-items:center;gap:0;cursor:pointer;user-select:none;padding:4px 8px;border-radius:6px;transition:background .15s}
+/* ═══ HEADER ═══ */
+.header{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:54px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:300;gap:12px}
+.header-left{display:flex;align-items:center;flex-shrink:0}
+.header-right{display:flex;align-items:center;gap:12px;flex-shrink:0;margin-left:auto}
+
+.logo{font-size:15px;font-weight:700;color:var(--t1);letter-spacing:-0.2px;cursor:pointer;user-select:none;padding:4px 6px;border-radius:6px;white-space:nowrap}
 .logo:hover{background:var(--bg3)}
 .logo em{color:var(--blue);font-style:normal}
-.logo-badge{font-size:9px;font-weight:600;background:rgba(78,143,239,0.15);color:var(--blue);padding:2px 6px;border-radius:8px;letter-spacing:0.5px;text-transform:uppercase;margin-left:7px}
-.header-stats{display:flex;gap:24px}
+
+/* Quick tabs — Dhan style pill nav */
+.quick-tabs{display:flex;align-items:center;gap:2px;background:var(--bg3);border-radius:8px;padding:3px;flex-shrink:0}
+.qtab{padding:5px 14px;font-size:12px;font-weight:500;color:var(--t3);background:none;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;transition:color .15s,background .15s}
+.qtab:hover{color:var(--t2)}
+.qtab.active{background:var(--bg2);color:var(--t1);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+
+/* Header stats */
+.header-stats{display:flex;gap:20px}
+.hstat{text-align:center}
 .hstat-label{font-size:9px;font-weight:500;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:1px}
 .hstat-value{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--t1)}
+
+/* Avatar button — always right, no name */
+.avatar-btn{background:none;border:none;cursor:pointer;padding:2px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.avatar-btn:hover .avatar-circle{border-color:var(--blue)}
+.avatar-circle{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#1a3a6e 0%,#0f2044 100%);border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--blue);letter-spacing:0.5px;overflow:hidden;flex-shrink:0;text-transform:uppercase;transition:border-color .2s}
+.avatar-circle img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 
 /* NAV */
 .nav{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);padding:0 24px;gap:0;overflow-x:auto;scrollbar-width:none}
@@ -332,7 +369,7 @@ kbd{background:var(--bg4);border:1px solid var(--border2);border-radius:3px;padd
 .avatar-name{font-size:12px;font-weight:500;color:var(--t2);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .avatar-chevron{color:var(--t3);font-size:10px;margin-left:1px}
 
-/* Avatar upload in drawer */
+/* ═══ USER AVATAR in drawer ═══ */
 .avatar-upload-area{display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 0 4px}
 .avatar-upload-circle{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#1a3a6e 0%,#0f2044 100%);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--blue);overflow:hidden;cursor:pointer;position:relative;transition:border-color .2s}
 .avatar-upload-circle:hover{border-color:var(--blue)}
@@ -341,6 +378,60 @@ kbd{background:var(--bg4);border:1px solid var(--border2);border-radius:3px;padd
 .avatar-upload-circle:hover .avatar-edit-overlay{opacity:1}
 .avatar-upload-name{font-size:13px;font-weight:600;color:var(--t1)}
 .avatar-upload-sub{font-size:11px;color:var(--t3)}
+
+/* ═══ MOBILE RESPONSIVE ═══ */
+@media(max-width:768px){
+  /* Header mobile */
+  .header{padding:0 14px;height:52px;gap:8px}
+  .logo{font-size:14px;padding:3px 4px}
+  .quick-tabs{gap:1px;padding:2px}
+  .qtab{padding:5px 10px;font-size:11px}
+  .header-stats{gap:12px}
+  .hstat-hide{display:none}
+  .hstat-value{font-size:12px}
+
+  /* Main padding */
+  .main{padding:14px 14px}
+
+  /* Grids collapse on mobile */
+  .g2,.g3,.g4,.g5{grid-template-columns:1fr}
+  .g2{grid-template-columns:repeat(2,1fr)}
+
+  /* Cards */
+  .card{padding:14px}
+
+  /* Form */
+  .form-grid{grid-template-columns:repeat(2,1fr)}
+
+  /* Table horizontal scroll */
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{min-width:700px}
+
+  /* Stat cards 2 col */
+  .g5{grid-template-columns:repeat(2,1fr)}
+
+  /* Filter bar wrap */
+  .filter-bar{flex-wrap:wrap;gap:6px;padding:10px 14px}
+  .filter-bar .fi,.filter-bar .fs{width:calc(50% - 4px)!important;min-width:0!important}
+
+  /* Ham drawer full width on mobile */
+  .ham-drawer{width:100%!important;max-width:100%!important}
+
+  /* Open trades grid single col */
+  #open-trades-grid{grid-template-columns:1fr!important}
+}
+
+@media(max-width:480px){
+  .quick-tabs{gap:1px;padding:2px}
+  .qtab{padding:4px 8px;font-size:10px}
+  .header-stats{display:none}
+  .logo{font-size:13px}
+  .form-grid{grid-template-columns:1fr}
+  .g2{grid-template-columns:1fr}
+  .g5{grid-template-columns:repeat(2,1fr)}
+  .seg-tabs{gap:4px}
+  .seg-btn{font-size:10.5px;padding:3px 9px}
+}
 
 /* THEME — Pearl White */
 body.theme-white{--bg:#f2f4f8;--bg2:#ffffff;--bg3:#edf0f7;--bg4:#e4e8f2;--border:#d8dce9;--border2:#c8cedf;--t1:#151a26;--t2:#3d4560;--t3:#8290aa}
@@ -499,24 +590,28 @@ body.theme-white ::-webkit-scrollbar-thumb{background:#c8cedf}
 
 <!-- HEADER -->
 <header class="header">
-  <div style="display:flex;align-items:center;gap:10px">
-    <div class="logo" id="app-logo" onclick="goHome()" title="Back to Dashboard">Trade<em>Log</em> <span class="logo-badge">Pro</span></div>
-    <div id="greeting-bar"></div>
+  <div class="header-left">
+    <div class="logo" id="app-logo" onclick="goHome()" title="Dashboard">Trade<em>Log</em></div>
   </div>
-  <div id="sync-status" style="font-size:11px;font-weight:500;color:var(--t3);cursor:pointer" onclick="manualSync()" title="Click to sync now">☁ Loading...</div>
-  <div style="display:flex;align-items:center;gap:16px">
-    <div class="header-stats">
-      <div><div class="hstat-label">Net P&L</div><div class="hstat-value" id="h-pl">₹0.00</div></div>
-      <div><div class="hstat-label">Win Rate</div><div class="hstat-value" id="h-wr">0%</div></div>
-      <div><div class="hstat-label">Trades</div><div class="hstat-value" id="h-cnt">0</div></div>
-      <div><div class="hstat-label">Streak</div><div class="hstat-value" id="h-streak">—</div></div>
+
+  <!-- Quick nav tabs — Dashboard, Journal, Analytics -->
+  <nav class="quick-tabs" id="quick-tabs">
+    <button class="qtab active" id="qt-dashboard" onclick="quickNav('dashboard')">Dashboard</button>
+    <button class="qtab" id="qt-journal" onclick="quickNav('journal')">Journal</button>
+    <button class="qtab" id="qt-analytics" onclick="quickNav('analytics')">Analytics</button>
+  </nav>
+
+  <div class="header-right">
+    <div class="header-stats" id="header-stats-wrap">
+      <div class="hstat"><div class="hstat-label">P&amp;L</div><div class="hstat-value" id="h-pl">₹0</div></div>
+      <div class="hstat"><div class="hstat-label">Win</div><div class="hstat-value" id="h-wr">0%</div></div>
+      <div class="hstat hstat-hide"><div class="hstat-label">Trades</div><div class="hstat-value" id="h-cnt">0</div></div>
+      <div class="hstat hstat-hide"><div class="hstat-label">Streak</div><div class="hstat-value" id="h-streak">—</div></div>
     </div>
-    <button class="avatar-btn" onclick="openHamMenu()" title="Account & Menu" id="header-avatar-btn">
+    <button class="avatar-btn" onclick="openHamMenu()" title="Menu" id="header-avatar-btn">
       <div class="avatar-circle" id="header-avatar-circle">
         <span id="header-avatar-initials">?</span>
       </div>
-      <span class="avatar-name" id="header-avatar-name"></span>
-      <span class="avatar-chevron">▾</span>
     </button>
   </div>
 </header>
@@ -1238,6 +1333,11 @@ function unpackData(d){if(!d)return;trades=d.trades||[];reviews=d.reviews||[];go
 function initFirebase(){
   if(!FB_CONFIG.apiKey){
     setSyncStatus('warn','⚙ Add Firebase config to enable sync');
+    return false;
+  }
+  if(!window.firebase){
+    // scripts not yet loaded — load them then retry
+    loadFirebase(()=>{ initFirebase(); syncFromFirebase(); });
     return false;
   }
   try{
@@ -2222,9 +2322,10 @@ function goHome(){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   const dash=g('page-dashboard');
   if(dash){dash.classList.add('active');renderDashboard();}
-  // sync hamburger nav active state
   document.querySelectorAll('.ham-nav-item').forEach(b=>b.classList.remove('active'));
   const hd=g('hn-dashboard');if(hd)hd.classList.add('active');
+  document.querySelectorAll('.qtab').forEach(t=>t.classList.remove('active'));
+  const qt=g('qt-dashboard');if(qt)qt.classList.add('active');
 }
 
 
@@ -2306,6 +2407,9 @@ function hamNav(name){
   switchPage(name,tab);
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   if(tab)tab.classList.add('active');
+  // sync quick tabs
+  document.querySelectorAll('.qtab').forEach(t=>t.classList.remove('active'));
+  const qt=g('qt-'+name);if(qt)qt.classList.add('active');
 }
 function saveHamSettings(){
   const s=getAppSettings();
@@ -2400,25 +2504,8 @@ function renderOpenTrades(){
     const isMtf=t.segment==='mtf';
     const mtfDays=isMtf?calcMtfDaysCount(t.date,null):null;
     const ch=DHAN.calc(t.segment,qty,entry,null,t.side,isMtf?mtfDays:0);
-    // Live P&L block
-    const livePrice=liveCache[t.instrument]||null;
-    let livePnlHtml='';
-    if(livePrice&&entry>0&&qty>0){
-      const grossPL=t.side==='LONG'?(livePrice-entry)*qty:(entry-livePrice)*qty;
-      const netPL=grossPL-ch.total;
-      const pct=(netPL/posVal*100);
-      const col=netPL>=0?'var(--green)':'var(--red)';
-      const sign=netPL>=0?'+':'';
-      livePnlHtml=`<div style="margin-top:8px;padding:8px 10px;background:var(--bg4);border-radius:5px;display:flex;align-items:center;justify-content:space-between">
-        <div style="font-size:11px;color:var(--t3)">Live &nbsp;<span style="font-family:var(--mono);font-size:12px;color:var(--t2)">₹${livePrice.toFixed(2)}</span></div>
-        <div style="text-align:right">
-          <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:${col}">${sign}${inr(netPL)}</div>
-          <div style="font-family:var(--mono);font-size:10px;color:${col}">${sign}${pct.toFixed(2)}%</div>
-        </div>
-      </div>`;
-    } else {
-      livePnlHtml=`<div style="margin-top:8px;padding:6px 10px;background:var(--bg4);border-radius:5px;font-size:11px;color:var(--t3);display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--yellow);animation:pulse 1.5s infinite"></span>Fetching live price…</div>`;
-    }
+    // P&L block — no live price, show entry info only
+    let livePnlHtml=`<div style="margin-top:8px;padding:6px 10px;background:var(--bg4);border-radius:5px;font-size:11px;color:var(--t3)">Exit to see final P&L</div>`;
     const daysBadge=isMtf&&mtfDays?`<span class="otc-days-badge">${mtfDays} MTF days</span>`:daysDiff>0?`<span style="font-size:10px;color:var(--t3)">Day ${daysDiff}</span>`:'';
     return`<div class="open-trade-card">
       <div class="otc-top">
@@ -2542,64 +2629,26 @@ function symbolSearch(val){
 function selectSymbol(sym){
   g('f-sym').value=sym;
   g('sym-suggestions').style.display='none';
-  // Fetch current price for the symbol
-  fetchLivePrice(sym,'f-entry');
 }
 function closeSymSuggestions(){const s=g('sym-suggestions');if(s)s.style.display='none';}
 
-// ════════════ LIVE PRICE FETCH ════════════
-// Uses Yahoo Finance API via proxy (no CORS issues for this endpoint)
-async function fetchLivePrice(symbol, targetId){
-  // Map NSE symbol to Yahoo Finance ticker
-  const nseSymbol=symbol.replace('&','-');
-  const yf=`${nseSymbol}.NS`;
-  const url=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yf)}?interval=1m&range=1d`;
-  try{
-    const res=await fetch(url,{signal:AbortSignal.timeout(4000)});
-    if(!res.ok)throw new Error('no data');
-    const data=await res.json();
-    const price=data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-    if(price&&targetId){
-      const el=g(targetId);
-      if(el&&!el.value){el.value=price.toFixed(2);updatePreview();}
-      return price;
-    }
-  }catch(e){}
-  return null;
+// ════════════ QUICK NAV ════════════
+function quickNav(page){
+  // Switch page
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const pg=g('page-'+page);if(pg)pg.classList.add('active');
+  if(page==='dashboard')renderDashboard();
+  // Update quick tabs
+  document.querySelectorAll('.qtab').forEach(t=>t.classList.remove('active'));
+  const qt=g('qt-'+page);if(qt)qt.classList.add('active');
+  // Sync ham nav
+  document.querySelectorAll('.ham-nav-item').forEach(b=>b.classList.remove('active'));
+  const hn=g('hn-'+page);if(hn)hn.classList.add('active');
 }
-
-// Auto-refresh live prices for open trades every 60s during market hours
-let livePriceInterval=null;
-const liveCache={};
-
-async function refreshOpenTradePrices(){
-  const openTrades=trades.filter(t=>!t.exit);
-  if(!openTrades.length)return;
-  const now=new Date();
-  const h=now.getHours(),m=now.getMinutes();
-  const isMarket=(h===9&&m>=15)||( h>9&&h<15)||(h===15&&m<=30);
-  if(!isMarket)return;
-  for(const t of openTrades){
-    try{
-      const price=await fetchLivePrice(t.instrument,null);
-      if(price)liveCache[t.instrument]=price;
-    }catch(e){}
-    await new Promise(r=>setTimeout(r,300)); // stagger requests
-  }
-  renderOpenTrades();
-}
-
-function startLivePriceRefresh(){
-  refreshOpenTradePrices();
-  if(livePriceInterval)clearInterval(livePriceInterval);
-  livePriceInterval=setInterval(refreshOpenTradePrices,60000);
-}
-
-
 
 // ════════════ INIT ════════════
 function init(){
-  // 1. Load from localStorage cache INSTANTLY — app is usable immediately
+  // 1. Load from localStorage cache INSTANTLY
   const cached = jp(ls(LS_CACHE));
   if(cached) unpackData(cached);
 
@@ -2610,22 +2659,17 @@ function init(){
   renderAll();
   renderStrategies();
 
-  // 3. Sync with Drive in background — non-blocking
+  // 3. Sync with Firebase in background
   setSyncStatus('loading','☁ Syncing...');
-  setTimeout(syncFromFirebase, 100); // small delay so UI paints first
+  setTimeout(syncFromFirebase, 100);
 
   // 4. Init segment UI state
   onSegmentChange('equity_delivery');
-
-  // 5. Start live price refresh for open trades
-  startLivePriceRefresh();
 }
 
 // ════════════ STARTUP ════════════
-// Apply settings (theme etc.) before showing anything
 (function startup(){
   applyAppSettings();
-  // Show login screen
   g('login-screen').style.display='flex';
 })();
 </script>
